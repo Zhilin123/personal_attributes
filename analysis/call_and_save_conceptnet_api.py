@@ -80,7 +80,7 @@ if __name__ == "__main__":
     
     
     filename = "data/{}_sentences_{}.csv".format(dataset, subset)
-    output_filename = "data/{}_{}_words_to_{}_words_{}.json".format(dataset, category_of_words, field_of_interest,subset)
+    output_filename = "data/conceptnet_words/{}_{}_words_to_{}_words_{}.json".format(dataset, category_of_words, field_of_interest,subset)
     
     output_filename.replace("_tail_not_in_sentence","")
     

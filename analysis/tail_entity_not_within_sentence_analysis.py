@@ -21,10 +21,10 @@ analysis_mode = args.mode
 
 #Dataset analysis
 if analysis_mode == "dataset_analysis":
-    filename = "data/train_sentences_tail_not_in_sentence.csv"
+    filename = "data/eval_sentences_tail_not_in_sentence.csv"
     filename_prefix = ["tail", "sentence"]
-    conceptnet_connected_filenames = ["data/conceptnet_words/train_{}_words_to_connected_words.json".format(i) for i in filename_prefix]
-    conceptnet_related_filenames = ["data/conceptnet_words/train_{}_words_to_related_words.json".format(i) for i in filename_prefix]
+    conceptnet_connected_filenames = ["data/conceptnet_words/eval_{}_words_to_connected_words_all.json".format(i) for i in filename_prefix]
+    conceptnet_related_filenames = ["data/conceptnet_words/eval_{}_words_to_related_words_all.json".format(i) for i in filename_prefix]
 
 #Model prediction analysis
 elif analysis_mode == "prediction_analysis":
@@ -37,6 +37,7 @@ elif analysis_mode == "prediction_analysis":
 tail_label = "ground_tail" if analysis_mode == "dataset_analysis" else "predicted_tail"
 
 df = pd.read_csv(filename)
+print("len: {}".format(len(df)))
 ground_sentence = list(df["ground_sentence"])
 tail = list(df[tail_label])
 
