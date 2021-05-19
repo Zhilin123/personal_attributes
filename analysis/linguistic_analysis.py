@@ -126,11 +126,11 @@ def draw_confusion_matrix(data, labels):
     plt.show()
 
 def draw_barplot(most_common_field_names, ground_truth_field,xlabel=""):
-    x = [i[0] for i in most_common_field_names]
+    x = [i[0].replace("-","\n-") for i in most_common_field_names]
     y = [i[1] for i in most_common_field_names]
     y = [100*i/len(ground_truth_field) for i in y]
     ax = sns.barplot(x=x, y=y)
-    ax.set_xticklabels(x, rotation=90)
+    ax.set_xticklabels(x, rotation=30) #90
     ax.set(xlabel=xlabel, ylabel="Proportion (%)")
     plt.tight_layout()
     plt.show()
@@ -155,7 +155,7 @@ if interested_field in ['reln']:
     print("Correct {}: {} %".format(interested_field, get_proportion_of_correct_field(data)))
 
 elif interested_field in ['dependency_labels', 'reln_descriptive','big_pos_tags']:
-    top_k = 10 #if interested_field == 'dependency_labels' else 20
+    top_k = 10
     most_common_field_names = Counter(ground_truth_field).most_common(top_k)
     if interested_field == 'dependency_labels':
         xlabel= "Dependency labels of tail_entity"  

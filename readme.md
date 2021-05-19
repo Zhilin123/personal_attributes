@@ -53,7 +53,6 @@ To show distribution of dependency labels and POS tags in the Extraction dataset
 
 ```sh
 cd analysis
-tar -xvf data.tar.gz
 
 python -m spacy download en_core_web_trf
 
