@@ -380,6 +380,10 @@ if __name__ == "__main__":
         all_new_triples += new_triples
         all_rejected_sentences += rejected_sentences
         all_rejected_triples += rejected_triples
+        
+        ## To save for analysis
+        save_to_csv(rejected_sentences, rejected_triples, "../../preprocessed_datasets/{}_sentences_not_in_sentence.csv".format(dataset))
+        save_to_csv(new_sentences, new_triples, "../../preprocessed_datasets/{}_sentences_in_sentence.csv".format(dataset))
 
     sentence_to_triple = {}
     all_all_sentences = all_new_sentences+all_rejected_sentences
@@ -393,9 +397,9 @@ if __name__ == "__main__":
     ## To generate sentence_to_triple.json for convai2-rev
     save_json(sentence_to_triple, "sentence_to_triple.json")
 
-    ## To save for analysis
-    save_to_csv(rejected_sentences, rejected_triples, "preprocessed_datasets/eval_sentences_not_in_sentence.csv")
-
+    
+    
+    '''
     ## Preprocess baseline model input
     folder = "nyt_format"
 
@@ -407,3 +411,4 @@ if __name__ == "__main__":
         process_sentence_into_nyt_format(rejected_sentences, rejected_triples, "{}/{}".format(folder,dataset), system="nyt_inference")
         # DyGIE++
         process_sentence_into_ace_format(new_sentences, new_triples, "{}/{}.jsonl".format(folder, dataset), system="dygiepp")
+    '''
