@@ -49,6 +49,10 @@ def get_start_end_pos(text, triple, system="dygiepp"):
 
 def process_sentence_into_ace_format(new_sentences, new_triples, output_filename, system="dygiepp"):
 
+    folder = "/".join(output_filename.split("/")[:-1])
+    if not os.path.exists(folder+"/"):
+        os.makedirs(folder+"/")
+            
     docs = []
 
     for j in trange(len(new_sentences)):
@@ -88,6 +92,10 @@ def process_sentence_into_nyt_format(new_sentences, new_triples, output_filename
     .dep: a jsonl format {"adj_mat": [[0 * len(sent)]*len(sent)]}
     """
 
+    folder = "/".join(output_filename_wo_format.split("/")[:-1])
+    if not os.path.exists(folder+"/"):
+        os.makedirs(folder+"/")
+        
     def convert_tup(triple):
         return ' ; '.join([triple[0], triple[2], triple[1]])
 
@@ -123,7 +131,7 @@ def process_sentence_into_nyt_format(new_sentences, new_triples, output_filename
 
 class DNLIDataset(Dataset):
 
-    def __init__(self, filename,  tokenizer, max_length=128, debug_mode=False, data_subset="all", mode="head_reln_tail"):
+    def __init__(self, filename,  tokenizer, max_length=128, debug_mode=False, data_subset="all", mode="head_reln_tail", unified_ontology=False):
 
         self.tokenizer = tokenizer
         self.input_ids = []
@@ -135,10 +143,14 @@ class DNLIDataset(Dataset):
         self.max_length = max_length
         self.mode = mode
 
-        if filename.startswith("../../dnli/dialogue_nli"):
+        if "dnli/dialogue_nli" in filename:
             all_sentences, all_triples = DNLIDataset.load_sentences_and_triples(filename)
             all_sentences, all_triples = DNLIDataset.remove_duplicates(all_sentences, all_triples)
-
+            if unified_ontology:
+                all_sentences, all_triples = DNLIDataset.remove_invalid_triples(all_sentences, all_triples)
+                all_triples = DNLIDataset.remove_tail_prefix_numbers(all_triples)
+                all_triples = DNLIDataset.unify_ontology(all_triples)
+            
             if data_subset == "within_sentence":
                 all_sentences, all_triples, _, _= DNLIDataset.retain_triples_found_in_sentences_only(all_sentences, all_triples)
             elif data_subset == "not_within_sentence":
@@ -325,6 +337,65 @@ class DNLIDataset(Dataset):
 
         return new_sentences, new_triples, rejected_sentences, rejected_triples
 
+    @staticmethod
+    def remove_invalid_triples(sentences, triples):
+        invalid_relns = set(["have", "not_have", "other", "like_general", "want", "dislike", "favorite"])
+        invalid_tail_fragments = ["<blank>", "unspecified", "unknown"]
+        clean_sentences = []
+        clean_triples = []
+        for i in range(len(sentences)):
+            triple = triples[i]
+            head, reln, tail = triple
+            if reln in invalid_relns:
+                continue
+            any_fragment = sum([int(fragment in tail) for fragment in invalid_tail_fragments])
+            if any_fragment:
+                continue
+            clean_sentences.append(sentences[i])
+            clean_triples.append(triples[i])
+        return clean_sentences, clean_triples
+    
+    @staticmethod
+    def remove_tail_prefix_numbers(triples):
+        clean_triples = []
+        for i in range(len(triples)):
+            triple = triples[i]
+            head, reln, tail = triple
+            tail_split = tail.split()
+            if len(tail_split) > 1 and tail_split[0].isdigit():
+                tail = " ".join(tail_split[1:])
+            clean_triples.append((head, reln, tail))
+        return clean_triples
+    
+    @staticmethod
+    def unify_ontology(triples):
+        src_to_tgt = {
+                    "favorite_food": "like_food",
+                    "favorite_drink": "like_drink",
+                    "favorite_show": "like_watching",
+                    "favorite_sport": "like_sports",
+                    "favorite_book": "like_read",
+                    "favorite_place": "like_goto",
+                    "favorite_movie": "like_movie",
+                    "favorite_music": "like_music",
+                    "favorite_animal": "like_animal",
+                    "has_hobby": "like_activity",
+                    "favorite_hobby": "like_activity",
+                    "favorite_activity": "like_activity",
+                    "have_chidren": "have_family",
+                    "have_sibling": "have_family"
+                }
+        
+        unified_triples = []
+        
+        for triple in triples:
+            head, reln, tail = triple
+            if reln in src_to_tgt:
+                reln = src_to_tgt[reln]
+            unified_triples.append((head, reln, tail))
+            
+        return unified_triples
+
 
 def get_descriptive_stats(all_sentences, all_triples):
     words_in_sentence = [len(i.split()) for i in all_sentences]
@@ -375,16 +446,40 @@ if __name__ == "__main__":
         filename = "../../dnli/dialogue_nli/dialogue_nli_{}.jsonl".format(dataset)
         all_sentences, all_triples = DNLIDataset.load_sentences_and_triples(filename)
         all_sentences, all_triples = DNLIDataset.remove_duplicates(all_sentences, all_triples)
+        all_sentences, all_triples = DNLIDataset.remove_invalid_triples(all_sentences, all_triples)
+        all_triples = DNLIDataset.remove_tail_prefix_numbers(all_triples)
+        all_triples = DNLIDataset.unify_ontology(all_triples)
         new_sentences, new_triples, rejected_sentences, rejected_triples = DNLIDataset.retain_triples_found_in_sentences_only(all_sentences, all_triples)
+#        print(len(new_sentences))
+#        print(len(rejected_sentences))
         all_new_sentences += new_sentences
         all_new_triples += new_triples
         all_rejected_sentences += rejected_sentences
         all_rejected_triples += rejected_triples
         
         ## To save for analysis
-        save_to_csv(rejected_sentences, rejected_triples, "../../preprocessed_datasets/{}_sentences_not_in_sentence.csv".format(dataset))
-        save_to_csv(new_sentences, new_triples, "../../preprocessed_datasets/{}_sentences_in_sentence.csv".format(dataset))
+#        save_to_csv(rejected_sentences, rejected_triples, "../../preprocessed_datasets/{}_sentence_not_in_sentence.csv".format(dataset))
+#        save_to_csv(new_sentences, new_triples, "../../preprocessed_datasets/{}_sentence_in_sentence.csv".format(dataset))
 
+        
+        
+        ## Preprocess baseline model input
+        '''
+        # WDec and PNDec Extraction
+        folder = "../../nyt_format_clean"
+        process_sentence_into_nyt_format(new_sentences, new_triples, "{}/{}".format(folder,dataset), system="nyt")
+        # WDec and PNDec Inference
+        folder = "../../nyt_inference_format_clean"
+        process_sentence_into_nyt_format(rejected_sentences, rejected_triples, "{}/{}".format(folder,dataset), system="nyt_inference")
+        # DyGIE++
+        folder = "../../dygiepp_clean_format"
+        process_sentence_into_ace_format(new_sentences, new_triples, "{}/{}.json".format(folder, dataset), system="dygiepp")
+        '''
+        
+    
+    get_descriptive_stats(all_new_sentences, all_new_triples)
+    get_descriptive_stats(all_rejected_sentences, all_rejected_triples)
+    
     sentence_to_triple = {}
     all_all_sentences = all_new_sentences+all_rejected_sentences
     all_all_triples = all_new_triples + all_rejected_triples
@@ -395,20 +490,66 @@ if __name__ == "__main__":
         sentence_to_triple[sentence] = triple
 
     ## To generate sentence_to_triple.json for convai2-rev
-    save_json(sentence_to_triple, "sentence_to_triple.json")
+    #save_json(sentence_to_triple, "sentence_to_triple.json")
 
     
     
-    '''
-    ## Preprocess baseline model input
-    folder = "nyt_format"
+    
+    
+    relations = ['[attend_school]',
+                 '[dislike]',
+                 '[employed_by_company]',
+                 '[employed_by_general]','[favorite]','[favorite_activity]',
+                 '[favorite_animal]','[favorite_book]','[favorite_color]',
+             '[favorite_drink]','[favorite_food]','[favorite_hobby]',
+             '[favorite_movie]','[favorite_music]','[favorite_music_artist]',
+             '[favorite_place]','[favorite_season]','[favorite_show]',
+             '[favorite_sport]','[gender]','[has_ability]','[has_age]',
+             '[has_degree]','[has_hobby]','[has_profession]','[have]',
+             '[have_chidren]','[have_family]','[have_pet]','[have_sibling]',
+             '[have_vehicle]','[job_status]','[like_activity]','[like_animal]',
+             '[like_drink]','[like_food]','[like_general]','[like_goto]',
+             '[like_movie]','[like_music]','[like_read]','[like_sports]',
+             '[like_watching]','[live_in_citystatecountry]','[live_in_general]',
+             '[marital_status]','[member_of]','[misc_attribute]','[nationality]',
+             '[not_have]','[other]','[own]','[physical_attribute]','[place_origin]',
+             '[previous_profession]','[school_status]','[teach]',
+             '[want]','[want_do]','[want_job]']
 
-    if not os.path.exists(folder+"/"):
-        os.makedirs(folder+"/")
-
-    for dataset in datasets:
-        # WDec and PNDec
-        process_sentence_into_nyt_format(rejected_sentences, rejected_triples, "{}/{}".format(folder,dataset), system="nyt_inference")
-        # DyGIE++
-        process_sentence_into_ace_format(new_sentences, new_triples, "{}/{}.jsonl".format(folder, dataset), system="dygiepp")
+    #similar relations
     '''
+    like_food, favorite_food
+    like_drink, favorite_drink
+    like_watching, favorite_show
+    like_sports, favorite_sport
+    like_read, favorite_book
+    like_goto, favorite_place
+    like_movie, favorite_movie
+    like_music, favorite_music
+    
+    has_hobby, favorite_hobby, like_activity, favorite_activity
+    
+    have_sibling, have_chidren (misspell intentional) --> have_family
+    
+    remove have, not_have, other, like_general, want , dislike, favorite,
+    
+    remove any tails containing <blank>, unspecified or unknown
+    
+    Tail containing loads of numbers 
+    1. like_animal/has_pet
+    2. marital status
+    3. have family/ has children
+    
+    remove all prefix numbers (some tail node are made of only numbers like has_age and that's fine)
+    
+    
+    '''
+    
+
+
+        
+               
+            
+        
+    
+    

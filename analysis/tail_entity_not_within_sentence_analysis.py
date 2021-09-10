@@ -9,7 +9,6 @@ from tqdm import trange
 import json
 import argparse
 
-
 parser = argparse.ArgumentParser(description='commonsense+semantic')
 parser.add_argument("--csv_filename", help="csv file containing eval tokens with analysis")
 parser.add_argument("--mode", default='dataset_analysis', choices=["dataset_analysis", "prediction_analysis"])
@@ -22,6 +21,8 @@ analysis_mode = args.mode
 #Dataset analysis
 if analysis_mode == "dataset_analysis":
     filename = "data/eval_sentences_tail_not_in_sentence.csv"
+    filename = "../../eval_tokens/clean_onto_not_within_sentence/discriminator_test_tokens_epoch_.csv"
+
     filename_prefix = ["tail", "sentence"]
     conceptnet_connected_filenames = ["data/conceptnet_words/eval_{}_words_to_connected_words_all.json".format(i) for i in filename_prefix]
     conceptnet_related_filenames = ["data/conceptnet_words/eval_{}_words_to_related_words_all.json".format(i) for i in filename_prefix]
@@ -30,6 +31,9 @@ if analysis_mode == "dataset_analysis":
 elif analysis_mode == "prediction_analysis":
     #filename = "../../nayak_not_within_sentence_eval.csv"
     filename = "data/discriminator_eval_tokens.csv"
+
+    filename = "../../eval_tokens/clean_onto_not_within_sentence/discriminator_test_tokens_epoch_.csv"
+    #filename = "../../nyt_inference_format_clean/test_without_copy_predicted.csv"
     conceptnet_connected_filenames = ["data/conceptnet_words/eval_sentence_words_to_connected_words_all.json"]
     conceptnet_related_filenames = ["data/conceptnet_words/eval_sentence_words_to_related_words_all.json"]
 
@@ -254,13 +258,15 @@ unaccounted_pairs = [[ground_sentence[i], tail[i]] for i in unaccounted_indexes]
 if analysis_mode != "prediction_analysis":
     print("Total: {}".format(len(ground_sentence)))
     print("Unaccounted samples: {}".format(len(unaccounted_indexes)))
-    
+
     for name in counter:
         print(name, round(counter[name]/len(ground_sentence)*100,2), "%")
-    
+
 def save_defaultdict_to_json(data, save_filename):
     with open(save_filename, "w") as write_file:
         json.dump(data, write_file)
 
 if analysis_mode == "prediction_analysis":
     save_defaultdict_to_json(accounted_indexes, "data/genre_accounted_per_category.json")
+else:
+    save_defaultdict_to_json(accounted_indexes, "data/ground_truth_accounted_per_category.json")

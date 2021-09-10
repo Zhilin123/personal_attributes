@@ -77,14 +77,3 @@ python call_and_save_conceptnet_api.py --category_of_words tail --dataset eval -
 # run analysis
 python tail_entity_not_within_sentence_analysis.py --mode dataset_analysis
 ```
-
-To show the proportion of predicted tail entities can be linked to sentences after various transformation in the Inference dataset
-
-```sh
-#Call conceptnet API to obtain words linked by commonsense
-python call_and_save_conceptnet_api.py --category_of_words sentence --dataset eval --field_of_interest related --subset all
-python call_and_save_conceptnet_api.py --category_of_words sentence --dataset eval --field_of_interest connected --subset all
-
-python tail_entity_not_within_sentence_analysis.py --mode prediction_analysis
-python tail_entity_proportion.py
-```

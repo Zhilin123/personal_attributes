@@ -45,13 +45,14 @@ parser.add_argument("--mode", default="head_reln_tail",choices=[
                                             "tail_reln_head", "tail_head_reln",
                                             "head", "reln", "tail"]) # dropped support for all_together; generation_name only supports head_reln_tail, head, reln, tail
 
-parser.add_argument("--model_name", default="gpt2", help="dialogpt")
+parser.add_argument("--model_name", default="gpt2", help="gpt2, dialogpt, gpt2-medium")
 parser.add_argument("--generate_train", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument("--generate_test", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument("--generate_one_batch_only", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument("--generate_custom", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument("--generate_json_filename", default="", help="")
-
+parser.add_argument("--unified_ontology", type=lambda x: (str(x).lower() == 'true'), default=True)
+parser.add_argument("--random_seed", type=int, default=42)
 
 args = parser.parse_args()
 
@@ -74,6 +75,7 @@ generate_test = args.generate_test
 generate_one_batch_only = args.generate_one_batch_only
 generate_json_filename = args.generate_json_filename
 generate_custom = args.generate_custom
+unified_ontology = args.unified_ontology
 
 print("load_trained_model: ", load_trained_model)
 print("need_generation: ", need_generation)
@@ -91,7 +93,7 @@ if "_" not in mode or mode == "all_together":
           the metric cannot be automatically calculated now. please do eval afterwards")
 
 # Set the seed value all over the place to make this reproducible.
-seed_val = 42
+seed_val = args.random_seed
 
 random.seed(seed_val)
 np.random.seed(seed_val)
@@ -109,7 +111,14 @@ best_checkpointer_name = "{}/pytorch_model_best.pth".format(config_name)
 training_stats_filename = "{}/training_stats.csv".format(config_name)
 eval_stats_filename = "{}/eval_stats.csv".format(config_name)
 
-batch_size = 16 #if generation_name not in ["original_tokens"] else 1 #,"original_spans"
+
+if inference_only and model_name == "gpt2-medium":
+    batch_size = 2
+elif model_name == "gpt2-medium":
+    batch_size = 8
+else:
+    batch_size = 16
+
 
 eval_every = 0.25
 
@@ -119,10 +128,10 @@ adjust_sample_weight = False
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-if model_name == "gpt2":
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2') #, add_prefix_space=True
-    configuration = GPT2Config.from_pretrained('gpt2', output_hidden_states=False)
-    model = GPT2LMHeadModel.from_pretrained("gpt2", config=configuration)
+if "gpt2" in model_name:
+    tokenizer = GPT2Tokenizer.from_pretrained(model_name) #, add_prefix_space=True
+    configuration = GPT2Config.from_pretrained(model_name, output_hidden_states=False)
+    model = GPT2LMHeadModel.from_pretrained(model_name, config=configuration)
 
 elif model_name == "dialogpt":
     print("using dialogpt")
@@ -131,23 +140,39 @@ elif model_name == "dialogpt":
 
 tokenizer.padding_side = "left"
 
-relations = ['[attend_school]','[dislike]','[employed_by_company]',
-             '[employed_by_general]','[favorite]','[favorite_activity]',
-             '[favorite_animal]','[favorite_book]','[favorite_color]',
-             '[favorite_drink]','[favorite_food]','[favorite_hobby]',
-             '[favorite_movie]','[favorite_music]','[favorite_music_artist]',
-             '[favorite_place]','[favorite_season]','[favorite_show]',
-             '[favorite_sport]','[gender]','[has_ability]','[has_age]',
-             '[has_degree]','[has_hobby]','[has_profession]','[have]',
-             '[have_chidren]','[have_family]','[have_pet]','[have_sibling]',
-             '[have_vehicle]','[job_status]','[like_activity]','[like_animal]',
-             '[like_drink]','[like_food]','[like_general]','[like_goto]',
-             '[like_movie]','[like_music]','[like_read]','[like_sports]',
-             '[like_watching]','[live_in_citystatecountry]','[live_in_general]',
-             '[marital_status]','[member_of]','[misc_attribute]','[nationality]',
-             '[not_have]','[other]','[own]','[physical_attribute]','[place_origin]',
-             '[previous_profession]','[school_status]','[teach]',
-             '[want]','[want_do]','[want_job]']
+if not unified_ontology:
+    relations = ['[attend_school]','[dislike]','[employed_by_company]',
+                 '[employed_by_general]','[favorite]','[favorite_activity]',
+                 '[favorite_animal]','[favorite_book]','[favorite_color]',
+                 '[favorite_drink]','[favorite_food]','[favorite_hobby]',
+                 '[favorite_movie]','[favorite_music]','[favorite_music_artist]',
+                 '[favorite_place]','[favorite_season]','[favorite_show]',
+                 '[favorite_sport]','[gender]','[has_ability]','[has_age]',
+                 '[has_degree]','[has_hobby]','[has_profession]','[have]',
+                 '[have_chidren]','[have_family]','[have_pet]','[have_sibling]',
+                 '[have_vehicle]','[job_status]','[like_activity]','[like_animal]',
+                 '[like_drink]','[like_food]','[like_general]','[like_goto]',
+                 '[like_movie]','[like_music]','[like_read]','[like_sports]',
+                 '[like_watching]','[live_in_citystatecountry]','[live_in_general]',
+                 '[marital_status]','[member_of]','[misc_attribute]','[nationality]',
+                 '[not_have]','[other]','[own]','[physical_attribute]','[place_origin]',
+                 '[previous_profession]','[school_status]','[teach]',
+                 '[want]','[want_do]','[want_job]']
+else:
+    relations = ['[attend_school]', '[employed_by_company]', '[employed_by_general]',
+                 '[favorite_color]', '[favorite_music_artist]','[favorite_season]',
+                 '[gender]', '[has_ability]', '[has_age]', '[has_degree]',
+                 '[has_profession]', '[have_family]','[have_pet]', '[have_vehicle]',
+                 '[job_status]','[like_activity]', '[like_animal]', '[like_drink]',
+                 '[like_food]', '[like_goto]', '[like_movie]', '[like_music]',
+                 '[like_read]', '[like_sports]', '[like_watching]',
+                 '[live_in_citystatecountry]', '[live_in_general]',
+                 '[marital_status]', '[member_of]', '[misc_attribute]',
+                 '[nationality]', '[own]', '[physical_attribute]',
+                 '[place_origin]', '[previous_profession]', '[school_status]',
+                 '[teach]', '[want_do]', '[want_job]']
+
+
 
 
 tokenizer.add_special_tokens({'pad_token': '<|endoftext|>',
@@ -182,7 +207,7 @@ def combine(defaultdict0, defaultdict1):
     new_defaultdict = defaultdict(list)
     all_keys = list(set(list(defaultdict0.keys()) + list(defaultdict1.keys())))
     for i in all_keys:
-        new_defaultdict[i] = list(set(defaultdict0[i] + defaultdict1[i]))
+        new_defaultdict[i] = list(set( defaultdict0[i] + defaultdict1[i])) #[i] +
     return new_defaultdict
 
 def remove_duplicate(one_default_dict):
@@ -262,24 +287,30 @@ else:
 model = model.to(device)
 
 if inference_only and "associated_with_relation" not in generation_name:
-    train_dataset = DNLIDataset("../../dnli/dialogue_nli/dialogue_nli_train.jsonl" ,
-                                tokenizer, debug_mode=True, data_subset=data_subset, mode=mode)
+    train_dataset = DNLIDataset("dnli/dialogue_nli/dialogue_nli_train.jsonl" ,
+                                tokenizer, debug_mode=True, data_subset=data_subset, mode=mode,
+                                unified_ontology=unified_ontology)
 else:
-    train_dataset = DNLIDataset("../../dnli/dialogue_nli/dialogue_nli_train.jsonl" ,
-                                tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode)
+    train_dataset = DNLIDataset("dnli/dialogue_nli/dialogue_nli_train.jsonl" ,
+                                tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode,
+                                unified_ontology=unified_ontology)
 
 if generate_train:
-    val_dataset = DNLIDataset("../../dnli/dialogue_nli/dialogue_nli_train.jsonl",
-                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode)
+    val_dataset = DNLIDataset("dnli/dialogue_nli/dialogue_nli_train.jsonl",
+                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode,
+                          unified_ontology=unified_ontology)
 elif generate_test:
-    val_dataset = DNLIDataset("../../dnli/dialogue_nli/dialogue_nli_test.jsonl",
-                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode)
+    val_dataset = DNLIDataset("dnli/dialogue_nli/dialogue_nli_test.jsonl",
+                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode,
+                          unified_ontology=unified_ontology)
 elif generate_custom:
     val_dataset = DNLIDataset(generate_json_filename,
-                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode)
+                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode,
+                          unified_ontology=unified_ontology)
 else:
-    val_dataset = DNLIDataset("../../dnli/dialogue_nli/dialogue_nli_dev.jsonl",
-                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode)
+    val_dataset = DNLIDataset("dnli/dialogue_nli/dialogue_nli_dev.jsonl",
+                          tokenizer, debug_mode=debug_mode, data_subset=data_subset, mode=mode,
+                          unified_ontology=unified_ontology)
 
 print('{:>5,} training samples'.format(len(train_dataset)))
 print('{:>5,} validation samples'.format(len(val_dataset)))
@@ -588,11 +619,24 @@ def only_allow_tail_spans_associated_with_relation_and_commonsense(batch_id, inp
     intersection_tokens = set(tokens_from_sentence).intersection(set(tokens_associated_with_relation))
     return list(intersection_tokens)
 
+'''
+Test cases
 
+edris island	islandedris	that is awesome! i live on an island edris island.
+jujitsu	ju	not sure yet. i am learning jujitsu too but its still quite hard.
+sardines	s	i eat sardines for breakfast.
+nirvana	n	i love nirvana a lot.
+california	n yc	california, i grew up here but i am moving to nyc next year.
+cat	t	i took in a stray cat. i fed him once and he never left.
+'''
 def get_candidate_tokens(token_ids_in_generate_text, last_token_id, mode="original_tokens"):
 
     if mode == "original_tokens":
-        candidate_tokens = token_ids_in_generate_text
+        original_tokens = token_ids_in_generate_text
+        candidate_tokens = []
+        for original_token in original_tokens:
+            candidate_tokens += token_id_to_g_token_id_vice_versa[original_token]
+            candidate_tokens.append(original_token)
 
     elif mode == "original_spans":
 
@@ -603,7 +647,14 @@ def get_candidate_tokens(token_ids_in_generate_text, last_token_id, mode="origin
             if last_token_id in g_tokens:
                 variants_of_last_token_id.append(token)
 
-        tokens_following_last_token = [token_ids_in_generate_text[i+1] for i in range(len(token_ids_in_generate_text)-1) if token_ids_in_generate_text[i] in variants_of_last_token_id]
+        tokens_following_last_token = [token_ids_in_generate_text[i+1]
+                                        for i in range(len(token_ids_in_generate_text)-1)
+                                            if token_ids_in_generate_text[i] in variants_of_last_token_id]
+
+
+#        tokens_following_last_token += [token_ids_in_generate_text[i]
+#                                        for i in range(len(token_ids_in_generate_text))
+#                                            if token_ids_in_generate_text[i] in variants_of_last_token_id]
 
         for token in token_ids_in_generate_text:
             g_tokens = token_id_to_g_token_id_vice_versa[token]
@@ -611,6 +662,7 @@ def get_candidate_tokens(token_ids_in_generate_text, last_token_id, mode="origin
                 tokens_following_last_token += g_tokens
 
         candidate_tokens = [i for i in tokens_following_last_token if i not in id_of_special_tokens]
+
 
     elif mode == "commonsense_tokens":
 
@@ -994,6 +1046,36 @@ def calculate_token_wise_accuracy(b_labels, most_likely_tokens, b_input_ids):
 
     return all_tokens
 
+def remove_punct(tail):
+    return tail.replace('.','').replace('!','').replace('?','').replace(',','')
+
+def correct_one_tail(tail, sentence):
+    sentence_split = sentence.split()
+    tail_split = tail.split()
+
+    for i in range(len(sentence_split)-len(tail_split)):
+        if sentence_split[i:i+len(tail_split)] == tail_split:
+            return tail
+
+    if ''.join(tail_split) in sentence_split:
+        return remove_punct(''.join(tail_split))
+
+    for i in range(len(sentence_split)-len(tail_split)):
+        if ' '.join(sentence_split[i:i+len(tail_split)]).startswith(' '.join(tail_split)):
+            return remove_punct(' '.join(sentence_split[i:i+len(tail_split)]))
+
+    if len(tail_split) == 1:
+        for j in range(len(tail_split[0]), 1, -1):
+            for i in range(len(sentence_split)):
+                if sentence_split[i].startswith(tail_split[0][:j]):
+                    return remove_punct(sentence_split[i])
+    else:
+        for i in range(len(sentence_split)):
+            if tail_split[0] == sentence_split[i]:
+                return remove_punct(' '.join(sentence_split[i:i+len(tail_split)]))
+
+    return tail
+
 def precision_recall_fscore(y_true, y_pred):
     precision = metrics.precision_score(y_true, y_pred, average='weighted')
     recall = metrics.recall_score(y_true, y_pred, average='weighted')
@@ -1016,6 +1098,9 @@ def decode_and_save_all_tokens(all_tokens, epoch_equivalent):
                         tokens_to_words[one_token_list] = ''
                 one_decoded_set_of_tokens.append(tokens_to_words[one_token_list])
             ground_head, predicted_head, ground_reln, predicted_reln, ground_tail, predicted_tail, ground_sentence= one_decoded_set_of_tokens
+            if inference_only and 'original_spans' in generation_name:
+                predicted_tail = correct_one_tail(predicted_tail, ground_sentence)
+
             formatted_decoded_tokens.append({
                         "ground_head":ground_head,
                         "predicted_head":predicted_head,
@@ -1031,13 +1116,19 @@ def decode_and_save_all_tokens(all_tokens, epoch_equivalent):
 
     col_names = ["ground_head","predicted_head",
                  "ground_reln","predicted_reln",
-                 "ground_tail", "predicted_tail"]
+                 "ground_tail", "predicted_tail",
+                 "ground_sentence"]
 
     all_ground_head, all_predicted_head, \
     all_ground_reln, all_predicted_reln, \
-    all_ground_tail, all_predicted_tail = [process_col(i) for i in col_names]
+    all_ground_tail, all_predicted_tail, \
+    all_ground_sentence = [process_col(i) for i in col_names]
 
-
+#    if inference_only and 'original_spans' in generation_name:
+#        # only do this correction for extraction
+#        print('doing correction')
+#        all_predicted_tail = [correct_one_tail(all_predicted_tail[i], all_ground_sentence[i]) for i in range(len(all_ground_sentence))]
+#
     all_ground = [all_ground_head[i] + all_ground_reln[i] + all_ground_tail[i] for i in range(len(all_ground_head))]
     all_predicted = [all_predicted_head[i] + all_predicted_reln[i] + all_predicted_tail[i] for i in range(len(all_ground_head))]
 

@@ -31,7 +31,10 @@ def get_correct_ids_reln(df):
 def get_correct_ids_tail(df):
     predicted_tokens = list(df['predicted_tail'])
     ground_truth_tokens = list(df['ground_tail'])
-    return set([i for i in range(len(predicted_tokens)) if predicted_tokens[i] == ground_truth_tokens[i]])
+    invalid_relns = set(["[have]", "[not_have]", "[other]", "[like_general]", "[want]", "[dislike]", "[favorite]"])
+    ground_relns = list(df['ground_reln'])
+    results = set([i for i in range(len(predicted_tokens)) if predicted_tokens[i] == ground_truth_tokens[i] and ground_relns[i] not in invalid_relns])
+    return results
 
 def get_correct_ids(df):
     if interested_field == "reln":
@@ -57,7 +60,6 @@ def preprocess_dependency_labels():
     correct_tokens = [literal_eval(i) for i in list(df['ground_tail_tokens'])]
     all_dependency_labels = [literal_eval(i) for i in list(df['ground_sentence_dependency_labels'])]
     tail_spans = [get_tail_span(all_tokens[i], correct_tokens[i]) for i in range(len(all_tokens))]
-
 
     tail_dependency_labels = [all_dependency_labels[i][tail_spans[i][0]:tail_spans[i][1]] for i in range(len(tail_spans))\
                                 if tail_spans[i] is not None ]
@@ -97,14 +99,10 @@ def keep_values_where_ground_and_predicted_are_in_most_common(predicted_field,
 def get_proportion_of_correct_field(data):
     return round(np.sum(np.diagonal(data)) / np.sum(data)*100,1)
 
-
 def draw_confusion_matrix(data, labels):
 
     ax = sns.heatmap(data, annot=True, cmap="YlGnBu", cbar_kws={'label': 'Scale'},fmt='g')
 
-    # to log heatmap for dependency
-    # use vmin=1, vmax=np.max(data), norm=LogNorm()
-    # cbar_kws["ticks"] = [1,10,100,1000]
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
 
@@ -158,9 +156,9 @@ elif interested_field in ['dependency_labels', 'reln_descriptive','big_pos_tags'
     top_k = 10
     most_common_field_names = Counter(ground_truth_field).most_common(top_k)
     if interested_field == 'dependency_labels':
-        xlabel= "Dependency labels of tail_entity"  
+        xlabel= "Dependency labels of tail_entity"
     elif interested_field == 'big_pos_tags':
-        xlabel= "POS Tags of tail_entity"  
-    else: 
-        xlabel= "Most common relations" 
+        xlabel= "POS Tags of tail_entity"
+    else:
+        xlabel= "Most common relations"
     draw_barplot(most_common_field_names, ground_truth_field, xlabel=xlabel)

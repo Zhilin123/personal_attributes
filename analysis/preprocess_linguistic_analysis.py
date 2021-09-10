@@ -12,6 +12,7 @@ args = parser.parse_args()
 csv_filename = args.csv_filename
 debug_mode = args.debug_mode
 
+
 spacy.prefer_gpu()
 nlp = spacy.load("en_core_web_trf")
 

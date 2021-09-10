@@ -49,6 +49,7 @@ parser.add_argument("--eval_batch_size", type=int, default=10)
 parser.add_argument("--train_dataset_filename", default="train_tokens_epoch_all_ten.csv")
 parser.add_argument("--generate_test", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument("--generate_custom", type=lambda x: (str(x).lower() == 'true'), default=False)
+parser.add_argument("--random_seed", type=int, default=42)
 
 args = parser.parse_args()
 
@@ -75,7 +76,7 @@ eval_batch_size = min(args.eval_batch_size, batch_size)
 sample_every = 300 if not debug_mode else 1
 
 # Set the seed value all over the place to make this reproducible.
-seed_val = 42
+seed_val = args.random_seed
 
 random.seed(seed_val)
 np.random.seed(seed_val)
@@ -357,6 +358,35 @@ def precision_recall_fscore(y_true, y_pred):
     f1 = (2 * precision * recall) / (precision+recall+ 1e-12)
     return precision, recall, f1
 
+def remove_punct(tail):
+    return tail.replace('.','').replace('!','').replace('?','').replace(',','')
+
+def correct_one_tail(tail, sentence):
+    sentence_split = sentence.split()
+    tail_split = tail.split()
+
+    for i in range(len(sentence_split)-len(tail_split)):
+        if sentence_split[i:i+len(tail_split)] == tail_split:
+            return tail
+
+    if ''.join(tail_split) in sentence_split:
+        return remove_punct(''.join(tail_split))
+
+    for i in range(len(sentence_split)-len(tail_split)):
+        if ' '.join(sentence_split[i:i+len(tail_split)]).startswith(' '.join(tail_split)):
+            return remove_punct(' '.join(sentence_split[i:i+len(tail_split)]))
+
+    if len(tail_split) == 1:
+        for j in range(len(tail_split[0]), 1, -1):
+            for i in range(len(sentence_split)):
+                if sentence_split[i].startswith(tail_split[0][:j]):
+                    return remove_punct(sentence_split[i])
+    else:
+        for i in range(len(sentence_split)):
+            if tail_split[0] == sentence_split[i]:
+                return remove_punct(' '.join(sentence_split[i:i+len(tail_split)]))
+
+    return tail
 
 def decode_and_save_all_tokens(all_tokens, epoch_equivalent):
     tokens_to_words = {}
@@ -394,14 +424,19 @@ def decode_and_save_all_tokens(all_tokens, epoch_equivalent):
     all_predicted_reln = [i["predicted_reln"] for i in formatted_decoded_tokens]
     all_ground_tail = [i["ground_tail"] for i in formatted_decoded_tokens]
     all_predicted_tail = [i["predicted_tail"] for i in formatted_decoded_tokens]
+    all_ground_sentence = [i["ground_sentence"] for i in formatted_decoded_tokens]
+
+    if 'not' not in config_name:
+        # only do this correction for extraction
+        all_predicted_tail = [correct_one_tail(all_predicted_tail[i], all_ground_sentence[i]) for i in range(len(all_ground_sentence))]
 
     all_ground = [all_ground_head[i] + all_ground_reln[i] + all_ground_tail[i] for i in range(len(all_ground_head))]
     all_predicted = [all_predicted_head[i] + all_predicted_reln[i] + all_predicted_tail[i] for i in range(len(all_ground_head))]
 
     precision, recall, f1 = precision_recall_fscore(all_ground, all_predicted)
 
-    precision_head, recall_head, f1_head= precision_recall_fscore(all_ground_head, all_predicted_head)
-    precision_reln, recall_reln, f1_reln= precision_recall_fscore(all_ground_reln, all_predicted_reln)
+    precision_head, recall_head, f1_head = precision_recall_fscore(all_ground_head, all_predicted_head)
+    precision_reln, recall_reln, f1_reln = precision_recall_fscore(all_ground_reln, all_predicted_reln)
     precision_tail, recall_tail, f1_tail = precision_recall_fscore(all_ground_tail, all_predicted_tail)
 
     df = pd.DataFrame(data=formatted_decoded_tokens)
