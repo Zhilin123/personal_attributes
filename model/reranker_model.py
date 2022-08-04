@@ -607,7 +607,7 @@ def eval_once(epoch_equivalent):
                 'recall_tail':recall_tail,
                 'f1_tail': f1_tail,
             })
-
+        print(eval_stats)
         pd.set_option('precision', 5)
         df_stats = pd.DataFrame(data=eval_stats)
         df_stats = df_stats.set_index('Generation Name')
