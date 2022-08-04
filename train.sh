@@ -1,5 +1,5 @@
 #!/bin/sh
-if [ $2=="inference" ]
+if [ $2 == "inference" ]
 then
   echo "inference mode"
   python model/generator_model.py --load_trained_model False --debug_mode False --config_name $1 --lr 2.5e-3 --mode head_reln_tail --data_subset not_within_sentence
