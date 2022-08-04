@@ -52,7 +52,8 @@ class DiscriminatorDNLIDataset(Dataset):
                                                 truncation=True,
                                                 max_length=self.max_length,
                                                 padding="max_length",
-                                                return_tensors="pt")
+                                                return_tensors="pt",
+                                                add_special_tokens=False)
 
                 element_to_tokenized[tuple(ground_elements)] = ground_dict
             else:
