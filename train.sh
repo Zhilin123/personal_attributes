@@ -14,3 +14,4 @@ else
   python model/generator_model.py --load_trained_model True --debug_mode False --config_name $1 --mode head_reln_tail --data_subset within_sentence --inference_only True --generation_name original_spans+all_ten --generate_test True
   python model/reranker_model.py --load_trained_model False --debug_mode False --config_name $1 --lr 5e-6 --mode head_reln_tail --epochs 8 --inference_only False --model_name bert --train_dataset_filename train_tokens_epoch_original_spans+all_ten.csv
   python model/reranker_model.py --load_trained_model True --debug_mode False --config_name $1 --lr 5e-6 --mode head_reln_tail --epochs 8 --inference_only True --model_name bert --train_dataset_filename train_tokens_epoch_original_spans+all_ten.csv --generate_test True
+fi
