@@ -19,7 +19,7 @@ from torch.utils.data import Dataset, DataLoader, random_split, RandomSampler, S
 from transformers import BertTokenizer, BertForSequenceClassification, RobertaTokenizer,RobertaForSequenceClassification
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from discriminator_dnli_dataset import DiscriminatorDNLIDataset
+from reranker_dataset import DiscriminatorDNLIDataset
 from torch import nn
 import argparse
 from sklearn import metrics
