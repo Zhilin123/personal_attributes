@@ -44,7 +44,7 @@ The command below trains the entire GenRe model.
 
 ```sh
 # <task> {extraction, inference}
-sh train.sh <working_directory> <task>
+bash train.sh <working_directory> <task> <random_seed>
 ```
 
 ## Analysis
