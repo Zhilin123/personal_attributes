@@ -138,7 +138,7 @@ elif model_name == "dialogpt":
     tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-small")
     model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-small")
 
-tokenizer.padding_side = "left"
+tokenizer.padding_side = "right" # "left"
 
 if not unified_ontology:
     relations = ['[attend_school]','[dislike]','[employed_by_company]',
@@ -815,8 +815,26 @@ argument is useful for constrained generation conditioned on the prefix, as desc
 
 # re-implement original_tokens
 
-
 def generate(b_generate_input_ids, b_generate_attn_masks):
+    generated_tokens = []
+    max_length = 128
+    for i in range(b_generate_input_ids.size(0)):
+        template_length = torch.sum(b_generate_attn_masks[i : i + 1])
+        single_generated_sequence = single_generate(b_generate_input_ids[i : i + 1, : template_length], b_generate_attn_masks[i : i + 1, : template_length])
+        generated_tokens.append(single_generated_sequence)
+        
+    # pad each generated to ensure they are of same length in dim 1
+    generated_tokens = [
+        torch.cat(
+            [i, torch.ones((i.size(0), max_length - i.size(1))).to(i.device) * tokenizer.pad_token_id],
+            axis=-1,
+        )
+        for i in generated_tokens
+    ]
+    generated_tokens = torch.cat(generated_tokens, axis=0)
+    return generated_tokens
+
+def single_generate(b_generate_input_ids, b_generate_attn_masks):
 
 
     param_dict = {
@@ -872,6 +890,7 @@ def generate(b_generate_input_ids, b_generate_attn_masks):
             param_dict["do_sample"] = True
 
     if generation_name.split("-")[0] != "first":
+        
         return model.generate(**param_dict)
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
@@ -886,6 +905,7 @@ def generate(b_generate_input_ids, b_generate_attn_masks):
 #            return filter_all_possible_sequences_by_spans(b_generate_input_ids, all_possible_return_seq)
 
 
+            
 def format_time(elapsed):
     return str(datetime.timedelta(seconds=int(round((elapsed)))))
 
