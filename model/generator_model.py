@@ -1291,7 +1291,7 @@ def eval_once(epoch_equivalent):
         else:
             eval_stats = []
 
-        eval_stats.append({
+        current_eval_stats = {
                 'Generation Name': generation_name,
                 'Valid. Loss': avg_eval_loss,
                 'Validation Time': validation_time,
@@ -1308,7 +1308,9 @@ def eval_once(epoch_equivalent):
                 'precision_tail':precision_tail,
                 'recall_tail':recall_tail,
                 'f1_tail': f1_tail,
-            })
+            }
+        print(current_eval_stats)
+        eval_stats.append(current_eval_stats)
 
         pd.set_option('precision', 5)
         df_stats = pd.DataFrame(data=eval_stats)
