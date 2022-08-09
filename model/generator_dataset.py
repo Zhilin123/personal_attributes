@@ -234,12 +234,19 @@ class DNLIDataset(Dataset):
         first_special_token_id = self.tokenizer.convert_tokens_to_ids([first_special_token])[0]
         position_of_first_token = [j for j in range(len(encodings_dict['input_ids'])) if encodings_dict['input_ids'][j] == first_special_token_id][0]
         position_of_start_token = [j for j in range(len(encodings_dict['input_ids'])) if encodings_dict['input_ids'][j] == self.tokenizer.bos_token_id][0]
+        
         pre_tensor_labels = [-100 if position_of_start_token <= i < position_of_first_token+1 else encodings_dict['input_ids'][i] for i in range(len(encodings_dict['input_ids']))]
+
 
         generate_encodings_dict = self.tokenizer('<|startoftext|>' + txt + " " +
                                                  first_special_token, max_length=self.max_length-32,
                                                  padding="max_length", return_tensors="pt")
-
+        
+        print("position_of_start_token ", position_of_start_token)
+        print("position_of_first_token ", position_of_first_token)
+        print("generate_encodings_dict", generate_encodings_dict)
+        print("pre_tensor_labels ", pre_tensor_labels)
+        raise ValueError
         generate_input_ids=torch.squeeze(generate_encodings_dict['input_ids'])
         generate_attn_masks=torch.squeeze(generate_encodings_dict['attention_mask'])
         input_ids = torch.tensor(pre_tensor_input_ids)
