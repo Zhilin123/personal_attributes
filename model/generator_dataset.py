@@ -242,11 +242,6 @@ class DNLIDataset(Dataset):
                                                  first_special_token, max_length=self.max_length-32,
                                                  padding="max_length", return_tensors="pt")
         
-        print("position_of_start_token ", position_of_start_token)
-        print("position_of_first_token ", position_of_first_token)
-        print("generate_encodings_dict", generate_encodings_dict)
-        print("pre_tensor_labels ", pre_tensor_labels)
-        raise ValueError
         generate_input_ids=torch.squeeze(generate_encodings_dict['input_ids'])
         generate_attn_masks=torch.squeeze(generate_encodings_dict['attention_mask'])
         input_ids = torch.tensor(pre_tensor_input_ids)
