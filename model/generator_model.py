@@ -832,8 +832,6 @@ def generate(b_generate_input_ids, b_generate_attn_masks):
         for i in generated_tokens
     ]
     generated_tokens = torch.cat(generated_tokens, axis=0)
-    print("generated_tokens_size: ", generated_tokens.size())
-    raise ValueError
     return generated_tokens
 
 def single_generate(b_generate_input_ids, b_generate_attn_masks):
