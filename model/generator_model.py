@@ -822,7 +822,7 @@ def generate(b_generate_input_ids, b_generate_attn_masks):
         template_length = torch.sum(b_generate_attn_masks[i : i + 1])
         single_generated_sequence = single_generate(b_generate_input_ids[i : i + 1, : template_length], b_generate_attn_masks[i : i + 1, : template_length])
         generated_tokens.append(single_generated_sequence)
-        
+
     # pad each generated to ensure they are of same length in dim 1
     generated_tokens = [
         torch.cat(
@@ -853,9 +853,6 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
 #        param_dict["num_beams"] = 10
 #        param_dict["num_return_sequences"] = 10
 
-    if "+all_ten" in generation_name:
-        param_dict["num_return_sequences"] = 10
-
     gen_name_to_constraint_func = {
             "original_spans":only_allow_valid_spans_from_sentence,
             "original_tokens":only_allow_valid_tokens_from_sentence,
@@ -869,13 +866,16 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
             "commonsense_tokens-tail_spans_associated_with_relation":only_allow_tail_spans_associated_with_relation_from_sentence,
             }
 
+    if "+all_ten" in generation_name:
+        param_dict["num_return_sequences"] = 10
+
     if generation_name.replace("+all_ten","") in gen_name_to_constraint_func:
         param_dict["num_beams"] = 10
         param_dict["prefix_allowed_tokens_fn"] = gen_name_to_constraint_func[generation_name.replace("+all_ten","")]
 
-
-    elif generation_name in ["all_ten"] or generation_name.split("-")[0] == "first":
+    elif "+all_ten" in generation_name or "first" in generation_name.split("-")[0] :
         #param_dict["bad_words_ids"] = get_bad_word_ids(b_generate_input_ids)
+        param_dict["prefix_allowed_tokens_fn"] = gen_name_to_constraint_func[generation_name.split("+")[0]]
         param_dict["num_beams"] = 10
         param_dict["num_return_sequences"] = 10
 
@@ -889,8 +889,8 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
         if param_name in ["top_k", "top_p", "temperature"]:
             param_dict["do_sample"] = True
 
-    if generation_name.split("-")[0] != "first":
-        
+    if "first" not in generation_name.split("-")[0]:
+
         return model.generate(**param_dict)
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
@@ -905,7 +905,7 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
 #            return filter_all_possible_sequences_by_spans(b_generate_input_ids, all_possible_return_seq)
 
 
-            
+
 def format_time(elapsed):
     return str(datetime.timedelta(seconds=int(round((elapsed)))))
 
