@@ -866,14 +866,17 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
             "commonsense_tokens-tail_spans_associated_with_relation":only_allow_tail_spans_associated_with_relation_from_sentence,
             }
 
-    if "+all_ten" in generation_name:
-        param_dict["num_return_sequences"] = 10
-
     if generation_name.replace("+all_ten","") in gen_name_to_constraint_func:
         param_dict["num_beams"] = 10
-        param_dict["prefix_allowed_tokens_fn"] = gen_name_to_constraint_func[generation_name.replace("+all_ten","")]
 
-    elif "+all_ten" in generation_name or "first" in generation_name.split("-")[0] :
+    if "+all_two" in generation_name:
+        param_dict["num_beams"] = 10
+        param_dict["num_return_sequences"] = 2
+        if '+' in generation_name:
+            param_dict["prefix_allowed_tokens_fn"] = gen_name_to_constraint_func[generation_name.split("+")[0]]
+
+
+    elif "+all_ten" in generation_name or "first" in generation_name.split("-")[0]:
         #param_dict["bad_words_ids"] = get_bad_word_ids(b_generate_input_ids)
         param_dict["prefix_allowed_tokens_fn"] = gen_name_to_constraint_func[generation_name.split("+")[0]]
         param_dict["num_beams"] = 10
