@@ -905,7 +905,7 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
         all_possible_return_seq = model_output.sequences
         sequences_scores = model_output.sequences_scores
         index = int(generation_name.split("-")[1])-1
-        return all_possible_return_seq[index]
+        return torch.stack([all_possible_return_seq[index]])
         #return torch.stack([all_possible_return_seq[one_index] for one_index in range(int(generation_name.split("-")[1])-1, len(all_possible_return_seq), 10)])
 
         #if generation_name.split("-")[0] == "first":
