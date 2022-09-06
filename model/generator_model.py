@@ -843,6 +843,7 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
               "pad_token_id": tokenizer.pad_token_id,
               "no_repeat_ngram_size": 2, # no repeating of 2-grams
               "max_length": 128,
+              "output_scores": True
             }
 
     #repetition_penalty=None,
@@ -897,7 +898,8 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
         return model.generate(**param_dict)
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
-        all_possible_return_seq = model.generate(**param_dict)
+        all_possible_return_seq = model.generate(**param_dict, output_scores=True)
+        print(all_possible_return_seq)
         return torch.stack([all_possible_return_seq[one_index] for one_index in range(int(generation_name.split("-")[1])-1, len(all_possible_return_seq), 10)])
 
         #if generation_name.split("-")[0] == "first":
@@ -1232,7 +1234,14 @@ def eval_once(epoch_equivalent):
 
             loss = outputs[0]
             b_logits = outputs[1]
-
+            
+            # Shift so that tokens < n predict n
+            shift_logits = b_logits[..., :-1, :].contiguous()
+            shift_labels = b_labels[..., 1:].contiguous()
+            # Flatten the tokens
+            loss_fct = nn.CrossEntropyLoss(reduction='none')
+            new_loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            loss_per_sample = torch.mean(new_loss.view(shift_labels.size()), dim=-1)
 
         batch_loss = loss.item()
         total_eval_loss += batch_loss
