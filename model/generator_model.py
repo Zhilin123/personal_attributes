@@ -1224,7 +1224,7 @@ def eval_once(epoch_equivalent):
     total_eval_ppl = 0
 
     all_tokens = []
-
+    all_sequences_scores = []
     for step, batch in tqdm(enumerate(validation_dataloader), position=0, leave=True):
 
         b_input_ids = batch[0].to(device)
@@ -1266,6 +1266,7 @@ def eval_once(epoch_equivalent):
         tokens = calculate_token_wise_accuracy(b_labels, output_undecoded, b_input_ids) #scores,
 
         all_tokens.append(tokens)
+        all_sequences_scores.append(sequences_scores)
 
         if generate_one_batch_only:
             break
@@ -1296,7 +1297,7 @@ def eval_once(epoch_equivalent):
     precision, recall, f1, \
     precision_head, recall_head, f1_head,\
     precision_reln, recall_reln, f1_reln, \
-    precision_tail, recall_tail, f1_tail = decode_and_save_all_tokens(all_tokens, save_tokens_name, sequences_scores)
+    precision_tail, recall_tail, f1_tail = decode_and_save_all_tokens(all_tokens, save_tokens_name, all_sequences_scores)
 
     validation_time = format_time(time.time() - t0)
 
