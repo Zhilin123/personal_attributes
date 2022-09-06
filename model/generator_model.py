@@ -843,7 +843,8 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
               "pad_token_id": tokenizer.pad_token_id,
               "no_repeat_ngram_size": 2, # no repeating of 2-grams
               "max_length": 128,
-              "output_scores": True
+              "output_scores": True,
+              "return_dict_in_generate": True
             }
 
     #repetition_penalty=None,
@@ -899,7 +900,7 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
         all_possible_return_seq = model.generate(**param_dict)
-        print(all_possible_return_seq.size())
+        print(all_possible_return_seq.keys())
         raise ValueError
         return torch.stack([all_possible_return_seq[one_index] for one_index in range(int(generation_name.split("-")[1])-1, len(all_possible_return_seq), 10)])
 
