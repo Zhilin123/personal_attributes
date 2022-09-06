@@ -817,11 +817,13 @@ argument is useful for constrained generation conditioned on the prefix, as desc
 
 def generate(b_generate_input_ids, b_generate_attn_masks):
     generated_tokens = []
+    sequences_scores = []
     max_length = 128
     for i in range(b_generate_input_ids.size(0)):
         template_length = torch.sum(b_generate_attn_masks[i : i + 1])
-        single_generated_sequence = single_generate(b_generate_input_ids[i : i + 1, : template_length], b_generate_attn_masks[i : i + 1, : template_length])
+        single_generated_sequence, single_sequences_scores = single_generate(b_generate_input_ids[i : i + 1, : template_length], b_generate_attn_masks[i : i + 1, : template_length])
         generated_tokens.append(single_generated_sequence)
+        sequences_scores.append(single_sequences_scores)
 
     # pad each generated to ensure they are of same length in dim 1
     generated_tokens = [
@@ -832,7 +834,7 @@ def generate(b_generate_input_ids, b_generate_attn_masks):
         for i in generated_tokens
     ]
     generated_tokens = torch.cat(generated_tokens, axis=0)
-    return generated_tokens
+    return generated_tokens, torch.cat(sequences_scores, axis=0)
 
 def single_generate(b_generate_input_ids, b_generate_attn_masks):
 
@@ -898,14 +900,14 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
         model_output = model.generate(**param_dict)
         all_possible_return_seq = model_output.sequences
         sequences_scores = model_output.sequences_scores
-        return all_possible_return_seq
+        return all_possible_return_seq, sequences_scores
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
         model_output = model.generate(**param_dict)
         all_possible_return_seq = model_output.sequences
         sequences_scores = model_output.sequences_scores
         index = int(generation_name.split("-")[1])-1
-        return torch.stack([all_possible_return_seq[index]])
+        return torch.stack([all_possible_return_seq[index]]), torch.stack([sequences_scores[index]])
         #return torch.stack([all_possible_return_seq[one_index] for one_index in range(int(generation_name.split("-")[1])-1, len(all_possible_return_seq), 10)])
 
         #if generation_name.split("-")[0] == "first":
@@ -1253,12 +1255,15 @@ def eval_once(epoch_equivalent):
         total_eval_loss += batch_loss
         total_eval_ppl += 2**batch_loss
 
+        sequences_scores = None
         if need_generation:
-            output_undecoded = generate(b_generate_input_ids, b_generate_attn_masks)
+            output_undecoded, sequences_scores = generate(b_generate_input_ids, b_generate_attn_masks)
 
         else:
             output_undecoded = torch.argmax(b_logits, axis=-1)
 
+        print(sequences_scores) 
+        raise ValueError
 
         tokens = calculate_token_wise_accuracy(b_labels, output_undecoded, b_input_ids) #scores,
 
@@ -1442,9 +1447,9 @@ for epoch_i in range(starting_epoch, total_epochs):
             total_train_loss += batch_loss
             total_train_ppl += 2**batch_loss
 
-
+            sequences_scores = None
             if need_generation and train_generation:
-                output_undecoded = generate(b_generate_input_ids, b_generate_attn_masks)
+                output_undecoded, sequences_scores = generate(b_generate_input_ids, b_generate_attn_masks)
             else:
                 output_undecoded = torch.argmax(b_logits, axis=-1)
 
