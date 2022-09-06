@@ -900,7 +900,7 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
         all_possible_return_seq = model.generate(**param_dict)
-        print(all_possible_return_seq.sequence_scores)
+        print(all_possible_return_seq.sequences_scores)
         raise ValueError
         return torch.stack([all_possible_return_seq[one_index] for one_index in range(int(generation_name.split("-")[1])-1, len(all_possible_return_seq), 10)])
 
