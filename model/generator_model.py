@@ -899,7 +899,11 @@ def single_generate(b_generate_input_ids, b_generate_attn_masks):
     if "first" not in generation_name.split("-")[0]:
         model_output = model.generate(**param_dict)
         all_possible_return_seq = model_output.sequences
-        sequences_scores = model_output.sequences_scores
+        if 'sequences_scores' in model_output.keys():
+            sequences_scores = model_output.sequences_scores
+        else:
+            #greedy decoding doesn't have beam scores
+            sequences_scores = torch.zeros((all_possible_return_seq.size(0),)).to(all_possible_return_seq.device)
         return all_possible_return_seq, sequences_scores
     else:
         # shape is [(batch*num_return_sequence) x max_seq_len]
