@@ -1115,11 +1115,11 @@ def precision_recall_fscore(y_true, y_pred):
     f1 = (2 * precision * recall) / (precision+recall + 1e-12)
     return precision, recall, f1
 
-def decode_and_save_all_tokens(all_tokens, epoch_equivalent):
+def decode_and_save_all_tokens(all_tokens, epoch_equivalent, sequences_scores):
     tokens_to_words = {}
     formatted_decoded_tokens = []
-    for one_set_of_tokens in all_tokens:
-        for one_token in one_set_of_tokens:
+    for idx, one_set_of_tokens in enumerate(all_tokens):
+        for idy, one_token in enumerate(one_set_of_tokens):
             one_decoded_set_of_tokens = []
             for one_small_token in one_token:
                 one_token_list = tuple([i for i in one_small_token]) #if 0 <= i < len(tokenizer)
@@ -1141,7 +1141,8 @@ def decode_and_save_all_tokens(all_tokens, epoch_equivalent):
                         "predicted_reln":predicted_reln,
                         "ground_tail":ground_tail,
                         "predicted_tail":predicted_tail,
-                        "ground_sentence":ground_sentence
+                        "ground_sentence":ground_sentence,
+                        "sequences_scores": sequences_scores[idx][idy].item()
                     })
 
     def process_col(col_name):
@@ -1262,9 +1263,6 @@ def eval_once(epoch_equivalent):
         else:
             output_undecoded = torch.argmax(b_logits, axis=-1)
 
-        print(sequences_scores) 
-        raise ValueError
-
         tokens = calculate_token_wise_accuracy(b_labels, output_undecoded, b_input_ids) #scores,
 
         all_tokens.append(tokens)
@@ -1298,7 +1296,7 @@ def eval_once(epoch_equivalent):
     precision, recall, f1, \
     precision_head, recall_head, f1_head,\
     precision_reln, recall_reln, f1_reln, \
-    precision_tail, recall_tail, f1_tail = decode_and_save_all_tokens(all_tokens, save_tokens_name)
+    precision_tail, recall_tail, f1_tail = decode_and_save_all_tokens(all_tokens, save_tokens_name, sequences_scores)
 
     validation_time = format_time(time.time() - t0)
 
